@@ -7,7 +7,7 @@ class FormatTest < ActiveSupport::TestCase
     Tolk::Translation.delete_all
     Tolk::Phrase.delete_all
 
-    Tolk::Locale.locales_config_path = RAILS_ROOT + "/test/locales/formats/"
+    Tolk::Locale.locales_config_path = File.join(Rails.root, "/test/locales/formats/")
 
     I18n.backend.reload!
     I18n.load_path = [Tolk::Locale.locales_config_path + 'en.yml']
@@ -22,28 +22,28 @@ class FormatTest < ActiveSupport::TestCase
   def test_all_formats_are_loaded_properly
     # TODO : Investigate why the fuck does this test fail
     # assert_equal 1, @en['number']
-    assert_equal 'I am just a stupid string :(', @en['string']
-    assert_equal [1, 2, 3], @en['number_array']
-    assert_equal ['sun', 'moon'], @en['string_array']
+    assert_equal 'I am just a stupid string :(', @en.text_for_key('string')
+    assert_equal [1, 2, 3], @en.text_for_key('number_array')
+    assert_equal ['sun', 'moon'], @en.text_for_key('string_array')
   end
 
   def test_pluaralization
     result = {'other' => 'Hello'}
-    assert_equal result, @en['pluralization']
+    assert_equal result, @en.text_for_key('pluralization')
 
-    assert ! @en['not_pluralization']
-    assert_equal 'World', @en['not_pluralization.other']
-    assert_equal 'fifo', @en['not_pluralization.lifo']
+    assert ! @en.text_for_key('not_pluralization')
+    assert_equal 'World', @en.text_for_key('not_pluralization.other')
+    assert_equal 'fifo',  @en.text_for_key('not_pluralization.lifo')
   end
 
   # def test_specail_activerecord_keys_and_prefixes
     # Special key
     # result = {'person' => 'Dude'}
-    # assert_equal result, @en['activerecord.models']
+    # assert_equal result, @en.text_for_key('activerecord.models')
 
     # Special prefix
     # result = {'login' => 'Handle'}
-    # assert_equal result, @en['activerecord.attributes.person']
+    # assert_equal result, @en.text_for_key('activerecord.attributes.person')
   # end
 
   def test_creating_translations_fails_on_mismatch_with_primary_translation
@@ -60,7 +60,7 @@ class FormatTest < ActiveSupport::TestCase
     success.save!
     assert_equal [1, 2], success.text
   end
-  
+
   def test_creating_translations_fails_with_unmatching_variables
     # Check that variable detection works correctly
     assert_equal Set['hello', 'world'], ph('variables').translations.primary.variables
@@ -105,9 +105,9 @@ class FormatTest < ActiveSupport::TestCase
 
     @spanish.reload
 
-    assert_equal 'spanish string', @spanish['string']
-    assert_equal '2', @spanish['number']
-    assert ! @spanish['string_array']
+    assert_equal 'spanish string', @spanish.text_for_key('string')
+    assert_equal 2, @spanish.text_for_key('number')
+    assert ! @spanish.text_for_key('string_array')
   end
 
   def test_bulk_update_saves_unchanged_record

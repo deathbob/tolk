@@ -51,9 +51,11 @@ module Tolk
       'zh-TW' => 'Chinese (Traditional)'
     }
 
-    has_many :phrases, :through => :translations, :class_name => 'Tolk::Phrase'
-    has_many :translations, :class_name => 'Tolk::Translation', :dependent => :destroy
+    has_many :translations,:class_name => 'Tolk::Translation',  :dependent => :destroy
     accepts_nested_attributes_for :translations, :reject_if => proc { |attributes| attributes['text'].blank? }
+
+    has_many :phrases, :through => :translations, :class_name => 'Tolk::Phrase'
+
     before_validation :remove_invalid_translations_from_target, :on => :update
 
     cattr_accessor :locales_config_path
@@ -115,28 +117,37 @@ module Tolk
       translations.count(:conditions => {:'tolk_translations.primary_updated' => true}) > 0
     end
 
+    def find_phrases_with_translations(page, options = {})
+      phrases = self.phrases.includes(:translations).order('tolk_phrases.key ASC').page(page)
+      options.each do |k,v|
+        phrases = phrases.where(k => v)
+      end
+      phrases.each do |phrase|
+        phrase.translation = phrase.translations.for(self)
+      end
+      phrases
+    end
+
     def phrases_with_translation(page = nil)
-      find_phrases_with_translations(page, :'tolk_translations.primary_updated' => false)
+      res = find_phrases_with_translations(page, {'tolk_translations.primary_updated' => false} )
     end
 
     def phrases_with_updated_translation(page = nil)
-      find_phrases_with_translations(page, :'tolk_translations.primary_updated' => true)
+      find_phrases_with_translations(page, {'tolk_translations.primary_updated' => true})
+    end
+
+    def existing_ids
+      Tolk::Translation.where(:locale_id => self.id).map(&:phrase_id).uniq
     end
 
     def count_phrases_without_translation
-      existing_ids = self.translations.all(:select => 'tolk_translations.phrase_id').map(&:phrase_id).uniq
       Tolk::Phrase.count - existing_ids.count
     end
 
     def phrases_without_translation(page = nil, options = {})
-      phrases = Tolk::Phrase.scoped(:order => 'tolk_phrases.key ASC')
-
-      existing_ids = self.translations.all(:select => 'tolk_translations.phrase_id').map(&:phrase_id).uniq
-      phrases = phrases.scoped(:conditions => ['tolk_phrases.id NOT IN (?)', existing_ids]) if existing_ids.present?
-
-      result = phrases.paginate({:page => page}.merge(options))
-      Tolk::Phrase.send :preload_associations, result, :translations
-      result
+      phrases = Tolk::Phrase.order('tolk_phrases.key ASC')
+      phrases = phrases.where(['tolk_phrases.id not in (?)', existing_ids]) unless existing_ids.empty?
+      phrases.page(page).includes(:translations)
     end
 
     def search_phrases(query, scope, page = nil, options = {})
@@ -149,22 +160,20 @@ module Tolk
         self.translations.containing_text(query)
       end
 
-      phrases = Tolk::Phrase.scoped(:order => 'tolk_phrases.key ASC')      
+      phrases = Tolk::Phrase.scoped(:order => 'tolk_phrases.key ASC')
       phrases = phrases.scoped(:conditions => ['tolk_phrases.id IN(?)', translations.map(&:phrase_id).uniq])
-      phrases.paginate({:page => page}.merge(options))
+      phrases.page(page)
     end
-    
+
     def search_phrases_without_translation(query, page = nil, options = {})
       return phrases_without_translation(page, options) unless query.present?
-      
+
       phrases = Tolk::Phrase.scoped(:order => 'tolk_phrases.key ASC')
 
-      found_translations_ids = Tolk::Locale.primary_locale.translations.all(:conditions => ["tolk_translations.text LIKE ?", "%#{query}%"], :select => 'tolk_translations.phrase_id').map(&:phrase_id).uniq
-      existing_ids = self.translations.all(:select => 'tolk_translations.phrase_id').map(&:phrase_id).uniq
-      phrases = phrases.scoped(:conditions => ['tolk_phrases.id NOT IN (?) AND tolk_phrases.id IN(?)', existing_ids, found_translations_ids]) if existing_ids.present?
+      found_translations_ids = Tolk::Locale.primary_locale.translations.where(["tolk_translations.text LIKE ?", "%#{query}%"]).map(&:phrase_id).uniq
+      phrases = phrases.where(['tolk_phrases.id NOT IN (?) AND tolk_phrases.id IN(?)', existing_ids, found_translations_ids]) if existing_ids.present?
 
-      result = phrases.paginate({:page => page}.merge(options))
-      Tolk::Phrase.send :preload_associations, result, :translations
+      result = phrases.page(page).includes(:translations)
       result
     end
 
@@ -190,15 +199,15 @@ module Tolk
       MAPPING[self.name] || self.name
     end
 
-    def [](key)
-      if phrase = Tolk::Phrase.find_by_key(key)
-        t = self.translations.find_by_phrase_id(phrase.id)
-        t.text if t
-      end
-    end
+     def text_for_key(key)
+       if phrase = Tolk::Phrase.find_by_key(key)
+         t = Tolk::Translation.find_by_phrase_id_and_locale_id(phrase.id, self.id)
+         t.text if t
+       end
+     end
 
     def translations_with_html
-      translations = self.translations.all(:conditions => "tolk_translations.text LIKE '%>%' AND 
+      translations = self.translations.all(:conditions => "tolk_translations.text LIKE '%>%' AND
         tolk_translations.text LIKE '%<%' AND tolk_phrases.key NOT LIKE '%_html'", :joins => :phrase)
       Translation.send :preload_associations, translations, :phrase
       translations
@@ -207,29 +216,15 @@ module Tolk
     private
 
     def remove_invalid_translations_from_target
-      self.translations.proxy_target.each do |t|
+      self.association(:translations).target.each do |t|
         unless t.valid?
-          self.translations.proxy_target.delete(t)
+          self.association(:translations).target.delete(t)
         else
           t.updated_at = Time.current # Silly hax to fool autosave into saving the record
         end
       end
 
       true
-    end
-
-    def find_phrases_with_translations(page, conditions = {})
-      result = Tolk::Phrase.paginate(:page => page,
-        :conditions => { :'tolk_translations.locale_id' => self.id }.merge(conditions),
-        :joins => :translations, :order => 'tolk_phrases.key ASC')
-
-      Tolk::Phrase.send :preload_associations, result, :translations
-
-      result.each do |phrase|
-        phrase.translation = phrase.translations.for(self)
-      end
-
-      result
     end
 
     def unsquish(string, value)

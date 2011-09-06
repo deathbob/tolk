@@ -7,13 +7,14 @@ class TranslationTest < ActiveSupport::TestCase
     Tolk::Locale.primary_locale(true)
   end
 
-  test "translation is inavlid when a duplicate exists" do
-    translation = Tolk::Translation.new :phrase => tolk_translations(:hello_world_da).phrase, :locale => tolk_translations(:hello_world_da).locale
+  test "translation is invalid when a duplicate exists" do
+    dup = tolk_translations(:hello_world_da)
+    translation = Tolk::Translation.new(:phrase => dup.phrase, :locale_id => dup.locale.id)
     translation.text = "Revised Hello World"
     assert translation.invalid?
-    assert translation.errors.on(:phrase_id)
+    assert translation.errors[:phrase_id].present?
   end
-  
+
   test "translation is not changed when text is assigned an equal value in numberic form" do
     translation = tolk_translations(:human_format_precision_en)
     assert_equal "1", translation.text
@@ -35,7 +36,7 @@ class TranslationTest < ActiveSupport::TestCase
   test "translation with numeric value" do
     assert_equal 1, tolk_translations(:human_format_precision_en).value
   end
-  
+
   test "translation with hash value" do
     hash = {:foo => "bar"}
     assert_equal hash, Tolk::Translation.new(:text => hash).value

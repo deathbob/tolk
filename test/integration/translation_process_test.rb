@@ -9,7 +9,7 @@ class TranslationProcessTest < ActionController::IntegrationTest
 
   def test_adding_missing_translations_and_updating_translations
     Tolk::Locale::MAPPING['xx'] = "Pirate"
-    
+
     locale = add_locale("Pirate")
     assert locale.translations.empty?
 
@@ -29,7 +29,8 @@ class TranslationProcessTest < ActionController::IntegrationTest
     fill_in 'translations[][text]', :with => "Arrrr!"
     click_button 'Save changes'
 
-    assert_equal current_url, all_tolk_locale_url(locale)
+#    assert_equal current_url, all_tolk_locale_url(locale)
+    assert_equal current_url, tolk_locale_path(locale)
     assert_equal 1, locale.translations.count
     assert_equal 'Arrrr!', locale.translations(true).first.text
   end
@@ -41,7 +42,7 @@ class TranslationProcessTest < ActionController::IntegrationTest
     select name
     click_button 'Add'
 
-    Tolk::Locale.find_by_name!(Tolk::Locale::MAPPING.index(name))
+    Tolk::Locale.find_by_name!(Tolk::Locale::MAPPING.key(name))
   end
 
   def setup_locales

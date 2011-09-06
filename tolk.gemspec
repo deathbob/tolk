@@ -9,8 +9,8 @@ Gem::Specification.new do |s|
   s.homepage = 'http://www.rubyonrails.org'
 
   s.platform = Gem::Platform::RUBY
-  s.add_dependency('will_paginate', '3.0.pre')
   s.add_dependency('ya2yaml', '~> 0.26')
+  s.add_dependency('kaminari', '~> 0.12.4')
 
   s.files = Dir['README', 'MIT-LICENSE', 'config/routes.rb', 'init.rb', 'lib/**/*', 'app/**/*', 'public/tolk/**/*']
   s.has_rdoc = false

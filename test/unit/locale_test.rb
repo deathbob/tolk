@@ -6,10 +6,10 @@ class LocaleTest < ActiveSupport::TestCase
   end
 
   test "turning locale with nested phrases into a hash" do
-    assert_equal({ "en" => { 
+    assert_equal({ "en" => {
       "number"=>{"human"=>{"format"=>{"precision"=>1}}},
-      "hello_world" => "Hello World", 
-      "nested" => { 
+      "hello_world" => "Hello World",
+      "nested" => {
         "hello_world" => "Nested Hello World",
         "hello_country" => "Nested Hello Country"
       }
@@ -26,7 +26,7 @@ class LocaleTest < ActiveSupport::TestCase
   end
 
   test "paginating phrases without translations" do
-    Tolk::Phrase.per_page = 2
+    Tolk::Phrase.paginates_per 2
     locale = tolk_locales(:se)
 
     page1 = locale.phrases_without_translation
@@ -36,11 +36,11 @@ class LocaleTest < ActiveSupport::TestCase
     assert_equal [2, 5], page2.map(&:id)
 
     page3 = locale.phrases_without_translation(3)
-    assert page3.blank?
+    assert_equal [], page3.map(&:id)
   end
 
   test "paginating phrases with translations" do
-    Tolk::Phrase.per_page = 4
+    Tolk::Phrase.paginates_per 4
     locale = tolk_locales(:en)
 
     page1 = locale.phrases_with_translation

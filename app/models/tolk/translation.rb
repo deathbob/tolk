@@ -40,9 +40,11 @@ module Tolk
       end
     end
 
-    def text=(value)
-      super unless value.to_s == text
-    end
+    # Not sure what the purpose of this is.
+    # Breaking a format_test, but commenting it out breaks two tests, so, I guess just leave it?
+     def text=(value)
+       super unless value.to_s == text
+     end
 
     def value
       if text.is_a?(String) && /^\d+$/.match(text)
@@ -54,7 +56,7 @@ module Tolk
 
     def self.detect_variables(search_in)
       case search_in
-        when String then Set.new(search_in.scan(/\{\{(\w+)\}\}/).flatten + search_in.scan(/\%\{(\w+)\}/).flatten) 
+        when String then Set.new(search_in.scan(/\{\{(\w+)\}\}/).flatten + search_in.scan(/\%\{(\w+)\}/).flatten)
         when Array then search_in.inject(Set[]) { |carry, item| carry + detect_variables(item) }
         when Hash then search_in.values.inject(Set[]) { |carry, item| carry + detect_variables(item) }
         else Set[]
@@ -110,7 +112,8 @@ module Tolk
         if primary_translation.variables.empty?
           self.errors.add(:text, "The original does not contain variables, so they should not be included.")
         else
-          self.errors.add(:text, "The translation should contain the variables #{primary_translation.to_a.to_sentence}.")
+          self.errors.add(:text, "The translation should contain the variables [#{primary_translation.variables.to_a.to_sentence}].")
+#          self.errors.add(:text, "The translation should contain the variables #{primary_translation.to_a.to_sentence}.")
         end
       end
     end

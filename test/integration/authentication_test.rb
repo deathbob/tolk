@@ -13,12 +13,12 @@ class AuthenticationTest < ActionController::IntegrationTest
 
   test "failed authentication" do
     get '/tolk'
-    assert_response 401
+    assert response.status == 401
   end
 
   test "successful authentication" do
     get '/tolk', nil, 'HTTP_AUTHORIZATION' => encode_credentials('lifo', 'pass')
-    assert_response :success
+    assert response.status == 200
   end
 
   protected

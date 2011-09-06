@@ -1,1 +1,4 @@
 tmp/**/*
+.DS_Store
+webrat.log
+tmp/*

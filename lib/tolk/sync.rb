@@ -38,6 +38,7 @@ module Tolk
 
       def sync_phrases(translations)
         primary_locale = self.primary_locale
+
         secondary_locales = self.secondary_locales
 
         # Handle deleted phrases
@@ -48,8 +49,11 @@ module Tolk
         translations.each do |key, value|
           # Create phrase and primary translation if missing
           existing_phrase = phrases.detect {|p| p.key == key} || Tolk::Phrase.create!(:key => key)
+
           translation = existing_phrase.translations.primary || primary_locale.translations.build(:phrase_id => existing_phrase.id)
+#          translation = existing_phrase.translations.primary || primary_locale.translations.build(:phrase_id => existing_phrase.id, :locale_id => primary_locale.id)
           translation.text = value
+
 
           if translation.changed? && !translation.new_record?
             # Set the primary updated flag if the primary translation has changed and it is not a new record.
